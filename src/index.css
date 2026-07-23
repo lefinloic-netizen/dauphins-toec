@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme {
+  --color-toec-green: #2e9e3a;
+  --color-toec-green-dark: #1b6b24;
+  --color-toec-green-light: #e8f5ea;
+
+  --color-cat-muscu-bg: #fce4ec;
+  --color-cat-muscu-text: #880e4f;
+  --color-cat-mobilite-bg: #f3e5f5;
+  --color-cat-mobilite-text: #6a1b9a;
+  --color-cat-filler-bg: #e3f2fd;
+  --color-cat-filler-text: #1565c0;
+  --color-cat-renfo-bg: #fff3e0;
+  --color-cat-renfo-text: #e65100;
+  --color-cat-cardio-bg: #e8f5e9;
+  --color-cat-cardio-text: #1b5e20;
+  --color-cat-natation-bg: #ccfbf1;
+  --color-cat-natation-text: #0f766e;
+}
+
+body {
+  background-color: #f3f4f6;
+}

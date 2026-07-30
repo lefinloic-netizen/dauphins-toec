@@ -38,7 +38,17 @@ export default function InviteAthleteModal({
     setSaving(false);
 
     if (error) {
-      setError("Erreur lors de l'invitation. Vérifie que l'email n'est pas déjà utilisé.");
+      let message = error.message;
+      const context = (error as { context?: Response }).context;
+      if (context) {
+        try {
+          const body = await context.json();
+          if (body?.error) message = body.error;
+        } catch {
+          // corps non-JSON, on garde le message par défaut
+        }
+      }
+      setError(message);
       return;
     }
 

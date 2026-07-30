@@ -2,6 +2,9 @@
 // Appelée par le coach depuis le Dashboard pour créer le compte d'un(e) athlète.
 // Utilise la service role key (jamais exposée au frontend) pour créer l'utilisateur
 // auth, lui envoyer un email d'invitation, et créer ses lignes profiles + athletes.
+//
+// Si une étape échoue après la création du compte auth, celui-ci est supprimé
+// (rollback) pour que l'email ne reste pas "coincé" comme déjà utilisé.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -83,6 +86,15 @@ Deno.serve(async (req) => {
 
     const newUserId = invited.user.id;
 
+    async function fail(message: string) {
+      // Rollback : on ne laisse jamais un compte auth orphelin sans fiche associée.
+      await admin.auth.admin.deleteUser(newUserId);
+      return new Response(JSON.stringify({ error: message }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { error: profileError } = await admin.from("profiles").insert({
       id: newUserId,
       role: "athlete",
@@ -91,12 +103,7 @@ Deno.serve(async (req) => {
       email: payload.email,
     });
 
-    if (profileError) {
-      return new Response(JSON.stringify({ error: profileError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (profileError) return await fail(profileError.message);
 
     const { error: athleteError } = await admin.from("athletes").insert({
       id: newUserId,
@@ -105,22 +112,12 @@ Deno.serve(async (req) => {
       category: payload.category,
     });
 
-    if (athleteError) {
-      return new Response(JSON.stringify({ error: athleteError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (athleteError) return await fail(athleteError.message);
 
     if (payload.group_ids?.length) {
       const rows = payload.group_ids.map((group_id) => ({ athlete_id: newUserId, group_id }));
       const { error: groupsError } = await admin.from("athlete_groups").insert(rows);
-      if (groupsError) {
-        return new Response(JSON.stringify({ error: groupsError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      if (groupsError) return await fail(groupsError.message);
     }
 
     return new Response(JSON.stringify({ id: newUserId }), {

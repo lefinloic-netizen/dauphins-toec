@@ -6,8 +6,59 @@ import BlockEditor, { type BlockDraft } from "../components/creer-seance/BlockEd
 
 const timeSlotLabels: Record<TimeSlot, string> = { matin: "Matin", apres_midi: "Après-midi", soir: "Soir" };
 
+const DRAFT_KEY = "toec:creer-seance-draft";
+
+interface Draft {
+  name: string;
+  date: string;
+  groupId: string;
+  duration: string;
+  timeSlot: TimeSlot;
+  warmupText: string;
+  blocks: BlockDraft[];
+  editingSessionId: string | null;
+  editingSessionName: string;
+}
+
 function emptyBlock(): BlockDraft {
   return { id: crypto.randomUUID(), title: "Bloc", exercises: [] };
+}
+
+function emptyDraft(): Draft {
+  return {
+    name: "",
+    date: "",
+    groupId: "",
+    duration: "",
+    timeSlot: "matin",
+    warmupText: "",
+    blocks: [emptyBlock()],
+    editingSessionId: null,
+    editingSessionName: "",
+  };
+}
+
+function loadDraft(): Draft {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return emptyDraft();
+    const parsed = JSON.parse(raw) as Partial<Draft>;
+    return { ...emptyDraft(), ...parsed, blocks: parsed.blocks?.length ? parsed.blocks : [emptyBlock()] };
+  } catch {
+    return emptyDraft();
+  }
+}
+
+function isDraftEmpty(d: Draft): boolean {
+  return (
+    !d.name.trim() &&
+    !d.date &&
+    !d.groupId &&
+    !d.duration &&
+    !d.warmupText.trim() &&
+    !d.editingSessionId &&
+    d.blocks.every((b) => b.exercises.length === 0)
+  );
 }
 
 export default function CreerSeance() {
@@ -18,19 +69,25 @@ export default function CreerSeance() {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [templates, setTemplates] = useState<{ id: string; name: string }[]>([]);
 
-  const [name, setName] = useState("");
-  const [date, setDate] = useState("");
-  const [groupId, setGroupId] = useState("");
-  const [duration, setDuration] = useState("");
-  const [timeSlot, setTimeSlot] = useState<TimeSlot>("matin");
-  const [warmupText, setWarmupText] = useState("");
-  const [blocks, setBlocks] = useState<BlockDraft[]>([emptyBlock()]);
+  // Chaque useState relit le brouillon via un initialiseur "lazy" (fonction), pas une
+  // constante au niveau du module — sinon React Router garde le module en cache et le
+  // formulaire ne se restaurerait qu'après un vrai rechargement de page, pas à chaque
+  // fois qu'on revient sur cet onglet.
+  const [name, setName] = useState(() => loadDraft().name);
+  const [date, setDate] = useState(() => loadDraft().date);
+  const [groupId, setGroupId] = useState(() => loadDraft().groupId);
+  const [duration, setDuration] = useState(() => loadDraft().duration);
+  const [timeSlot, setTimeSlot] = useState<TimeSlot>(() => loadDraft().timeSlot);
+  const [warmupText, setWarmupText] = useState(() => loadDraft().warmupText);
+  const [blocks, setBlocks] = useState<BlockDraft[]>(() => loadDraft().blocks);
 
   const [templateToLoad, setTemplateToLoad] = useState("");
-  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
-  const [editingSessionName, setEditingSessionName] = useState("");
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(() => loadDraft().editingSessionId);
+  const [editingSessionName, setEditingSessionName] = useState(() => loadDraft().editingSessionName);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(() =>
+    !isDraftEmpty(loadDraft()) ? "Brouillon restauré automatiquement." : null,
+  );
 
   async function loadGroups() {
     const { data } = await supabase.from("groups").select("*").order("name");
@@ -64,6 +121,17 @@ export default function CreerSeance() {
     }
   }, [location.state]);
 
+  // Sauvegarde automatique du brouillon à chaque modification, pour ne rien perdre
+  // en changeant d'onglet ou en fermant l'app avant d'enregistrer.
+  useEffect(() => {
+    const draft: Draft = { name, date, groupId, duration, timeSlot, warmupText, blocks, editingSessionId, editingSessionName };
+    if (isDraftEmpty(draft)) {
+      localStorage.removeItem(DRAFT_KEY);
+    } else {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    }
+  }, [name, date, groupId, duration, timeSlot, warmupText, blocks, editingSessionId, editingSessionName]);
+
   function resetForm() {
     setName("");
     setDate("");
@@ -75,6 +143,7 @@ export default function CreerSeance() {
     setTemplateToLoad("");
     setEditingSessionId(null);
     setEditingSessionName("");
+    localStorage.removeItem(DRAFT_KEY);
   }
 
   function addBlock() {
@@ -248,9 +317,14 @@ export default function CreerSeance() {
     <div className="flex flex-col gap-4 max-w-4xl">
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-gray-900 text-lg">Créer une séance</h2>
-        <Link to="/historique" className="text-sm text-toec-green-dark hover:underline">
-          Voir l'historique des séances →
-        </Link>
+        <div className="flex items-center gap-4">
+          <button onClick={resetForm} className="text-sm text-gray-400 hover:text-gray-600">
+            Vider le formulaire
+          </button>
+          <Link to="/historique" className="text-sm text-toec-green-dark hover:underline">
+            Voir l'historique des séances →
+          </Link>
+        </div>
       </div>
 
       {editingSessionId && (

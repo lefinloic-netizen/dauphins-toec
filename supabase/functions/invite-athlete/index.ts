@@ -1,7 +1,9 @@
 // Edge Function: invite-athlete
 // Appelée par le coach depuis le Dashboard pour créer le compte d'un(e) athlète.
 // Utilise la service role key (jamais exposée au frontend) pour créer l'utilisateur
-// auth, lui envoyer un email d'invitation, et créer ses lignes profiles + athletes.
+// auth avec un mot de passe défini par le coach (aucun email envoyé — évite la limite
+// d'envoi d'emails du plan gratuit Supabase, utile pour créer beaucoup de comptes d'un coup),
+// et créer ses lignes profiles + athletes.
 //
 // Si une étape échoue après la création du compte auth, celui-ci est supprimé
 // (rollback) pour que l'email ne reste pas "coincé" comme déjà utilisé.
@@ -15,6 +17,7 @@ const corsHeaders = {
 
 interface InviteAthletePayload {
   email: string;
+  password: string;
   first_name: string;
   last_name: string;
   sex?: "M" | "F";
@@ -71,20 +74,29 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    // Crée l'utilisateur et envoie l'email d'invitation (définition du mot de passe)
-    const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
-      payload.email,
-    );
-
-    if (inviteError || !invited.user) {
-      return new Response(JSON.stringify({ error: inviteError?.message ?? "Échec invitation" }), {
+    if (!payload.password || payload.password.length < 6) {
+      return new Response(JSON.stringify({ error: "Mot de passe requis (6 caractères minimum)" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const newUserId = invited.user.id;
+    // Crée l'utilisateur directement avec le mot de passe fourni par le coach —
+    // pas d'email envoyé, donc pas de limite d'envoi.
+    const { data: created, error: createError } = await admin.auth.admin.createUser({
+      email: payload.email,
+      password: payload.password,
+      email_confirm: true,
+    });
+
+    if (createError || !created.user) {
+      return new Response(JSON.stringify({ error: createError?.message ?? "Échec de la création du compte" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const newUserId = created.user.id;
 
     async function fail(message: string) {
       // Rollback : on ne laisse jamais un compte auth orphelin sans fiche associée.

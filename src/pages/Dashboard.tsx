@@ -56,7 +56,7 @@ export default function Dashboard() {
           onClick={() => setInviteOpen(true)}
           className="w-full text-sm bg-toec-green hover:bg-toec-green-dark text-white rounded-lg py-2 font-medium"
         >
-          + Inviter un(e) athlète
+          + Ajouter un(e) athlète
         </button>
 
         <div className="flex flex-col gap-1 max-h-[65vh] overflow-y-auto">

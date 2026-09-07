@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { calcAge } from "../../lib/age";
+import { formatValue, unitForCategory } from "../../lib/units";
 import type { AthleteWithProfile, AthleteTagRow, RecordRow, PerformancePoint } from "../../types/views";
 import type { Exercise } from "../../types/database";
 import PerfChart from "./PerfChart";
@@ -143,6 +144,8 @@ export default function AthleteFiche({
 
   const age = calcAge(birthDate || null);
   const selectedRecord = records.find((r) => r.exercise_id === selectedExerciseId);
+  const selectedExercise = exercises.find((ex) => ex.id === selectedExerciseId);
+  const selectedUnit = unitForCategory(selectedExercise?.category ?? "musculation");
   const initials = `${athlete.profile.first_name[0] ?? ""}${athlete.profile.last_name[0] ?? ""}`.toUpperCase();
 
   return (
@@ -223,7 +226,8 @@ export default function AthleteFiche({
           <div className="flex flex-wrap gap-2">
             {records.map((r) => (
               <div key={r.exercise_id} className="bg-toec-green-light text-toec-green-dark rounded-lg px-3 py-1.5 text-sm">
-                <span className="font-medium">{r.exercise.name}</span> — {r.record_kg} kg
+                <span className="font-medium">{r.exercise.name}</span> —{" "}
+                {formatValue(r.record_kg, unitForCategory(r.exercise.category))}
               </div>
             ))}
           </div>
@@ -307,11 +311,11 @@ export default function AthleteFiche({
               </select>
               {selectedRecord && (
                 <span className="text-sm text-toec-green-dark font-medium">
-                  Record actuel : {selectedRecord.record_kg} kg
+                  Record actuel : {formatValue(selectedRecord.record_kg, selectedUnit)}
                 </span>
               )}
             </div>
-            <PerfChart points={perfPoints} />
+            <PerfChart points={perfPoints} unit={selectedUnit} />
           </>
         )}
       </div>

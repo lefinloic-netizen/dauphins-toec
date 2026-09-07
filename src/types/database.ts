@@ -2,7 +2,7 @@ export type Role = "coach" | "athlete";
 export type Sex = "M" | "F";
 export type TagType = "fort" | "faible" | "a_travailler";
 export type TagSource = "questionnaire" | "coach";
-export type ExerciseCategory = "musculation" | "mobilite" | "filler" | "renfo" | "cardio" | "natation";
+export type ExerciseCategory = "musculation" | "mobilite" | "filler" | "renfo" | "cardio" | "natation" | "saut";
 
 export type Profile = {
   id: string;

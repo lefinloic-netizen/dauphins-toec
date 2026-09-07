@@ -10,6 +10,7 @@ const categoryLabels: Record<ExerciseCategory, string> = {
   renfo: "Renfo",
   cardio: "Cardio",
   natation: "Natation",
+  saut: "Saut",
 };
 
 const categoryClasses: Record<ExerciseCategory, string> = {
@@ -19,6 +20,7 @@ const categoryClasses: Record<ExerciseCategory, string> = {
   renfo: "bg-cat-renfo-bg text-cat-renfo-text",
   cardio: "bg-cat-cardio-bg text-cat-cardio-text",
   natation: "bg-cat-natation-bg text-cat-natation-text",
+  saut: "bg-cat-saut-bg text-cat-saut-text",
 };
 
 export default function Bibliotheque() {

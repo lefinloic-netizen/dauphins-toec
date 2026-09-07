@@ -1,8 +1,9 @@
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { formatFRDate } from "../../lib/dates";
+import { formatValue, type RecordUnit } from "../../lib/units";
 import type { PerformancePoint } from "../../types/views";
 
-export default function PerfChart({ points }: { points: PerformancePoint[] }) {
+export default function PerfChart({ points, unit = "kg" }: { points: PerformancePoint[]; unit?: RecordUnit }) {
   if (points.length === 0) {
     return (
       <div className="h-56 flex items-center justify-center text-sm text-gray-400">
@@ -21,8 +22,11 @@ export default function PerfChart({ points }: { points: PerformancePoint[] }) {
         <LineChart data={data} margin={{ top: 10, right: 16, left: -16, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis dataKey="date" tickFormatter={formatFRDate} tick={{ fontSize: 12 }} />
-          <YAxis tick={{ fontSize: 12 }} />
-          <Tooltip labelFormatter={(label) => formatFRDate(String(label))} />
+          <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => formatValue(Number(v), unit)} width={70} />
+          <Tooltip
+            labelFormatter={(label) => formatFRDate(String(label))}
+            formatter={(v) => [formatValue(Number(v), unit), "Valeur"]}
+          />
           <Line
             type="monotone"
             dataKey="valeur"

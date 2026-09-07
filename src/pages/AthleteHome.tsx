@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import { calcAge } from "../lib/age";
 import { addDays, formatFRDate, toISODate } from "../lib/dates";
+import { formatValue, unitForCategory } from "../lib/units";
 import type { Athlete, Exercise } from "../types/database";
 import type { AthleteTagRow, RecordRow, PerformancePoint, SessionWithGroup } from "../types/views";
 import PerfChart from "../components/dashboard/PerfChart";
@@ -151,6 +152,8 @@ export default function AthleteHome() {
 
   const age = calcAge(athlete?.birth_date ?? null);
   const selectedRecord = records.find((r) => r.exercise_id === selectedExerciseId);
+  const selectedExercise = exercises.find((ex) => ex.id === selectedExerciseId);
+  const selectedUnit = unitForCategory(selectedExercise?.category ?? "musculation");
 
   return (
     <div className="flex flex-col gap-4 pb-6">
@@ -189,7 +192,8 @@ export default function AthleteHome() {
           <div className="flex flex-wrap gap-2">
             {records.map((r) => (
               <div key={r.exercise_id} className="bg-toec-green-light text-toec-green-dark rounded-lg px-3 py-1.5 text-sm">
-                <span className="font-medium">{r.exercise.name}</span> — {r.record_kg} kg
+                <span className="font-medium">{r.exercise.name}</span> —{" "}
+                {formatValue(r.record_kg, unitForCategory(r.exercise.category))}
               </div>
             ))}
           </div>
@@ -244,9 +248,11 @@ export default function AthleteHome() {
               ))}
             </select>
             {selectedRecord && (
-              <p className="text-sm text-toec-green-dark font-medium mb-2">Record actuel : {selectedRecord.record_kg} kg</p>
+              <p className="text-sm text-toec-green-dark font-medium mb-2">
+                Record actuel : {formatValue(selectedRecord.record_kg, selectedUnit)}
+              </p>
             )}
-            <PerfChart points={perfPoints} />
+            <PerfChart points={perfPoints} unit={selectedUnit} />
           </>
         )}
       </div>

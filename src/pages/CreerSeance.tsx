@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import type { Exercise, Group, TimeSlot } from "../types/database";
 import BlockEditor, { type BlockDraft } from "../components/creer-seance/BlockEditor";
+import ManageTemplatesModal from "../components/creer-seance/ManageTemplatesModal";
 
 const timeSlotLabels: Record<TimeSlot, string> = { matin: "Matin", apres_midi: "Après-midi", soir: "Soir" };
 
@@ -82,6 +83,7 @@ export default function CreerSeance() {
   const [blocks, setBlocks] = useState<BlockDraft[]>(() => loadDraft().blocks);
 
   const [templateToLoad, setTemplateToLoad] = useState("");
+  const [manageTemplatesOpen, setManageTemplatesOpen] = useState(false);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(() => loadDraft().editingSessionId);
   const [editingSessionName, setEditingSessionName] = useState(() => loadDraft().editingSessionName);
   const [saving, setSaving] = useState(false);
@@ -183,6 +185,7 @@ export default function CreerSeance() {
           sets: e.sets ?? "",
           reps: e.reps ?? "",
           charge_rpe: e.charge_rpe ?? "",
+          tempo: e.tempo ?? "",
           recovery: e.recovery ?? "",
         })),
       });
@@ -301,6 +304,7 @@ export default function CreerSeance() {
           sets: ex.sets || null,
           reps: ex.reps || null,
           charge_rpe: ex.charge_rpe || null,
+          tempo: ex.tempo || null,
           recovery: ex.recovery || null,
           order_index: j,
         });
@@ -350,6 +354,13 @@ export default function CreerSeance() {
               </option>
             ))}
           </select>
+          <button
+            type="button"
+            onClick={() => setManageTemplatesOpen(true)}
+            className="text-sm text-gray-500 hover:text-toec-green-dark whitespace-nowrap"
+          >
+            Gérer les templates
+          </button>
         </div>
 
         <div className="grid sm:grid-cols-2 gap-3">
@@ -464,6 +475,14 @@ export default function CreerSeance() {
           Sauvegarder comme template
         </button>
       </div>
+
+      {manageTemplatesOpen && (
+        <ManageTemplatesModal
+          templates={templates}
+          onClose={() => setManageTemplatesOpen(false)}
+          onChanged={loadTemplatesList}
+        />
+      )}
     </div>
   );
 }

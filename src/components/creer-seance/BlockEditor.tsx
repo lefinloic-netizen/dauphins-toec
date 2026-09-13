@@ -4,6 +4,7 @@ export interface ExerciseDraft {
   sets: string;
   reps: string;
   charge_rpe: string;
+  tempo: string;
   recovery: string;
 }
 
@@ -34,7 +35,7 @@ export default function BlockEditor({
       ...block,
       exercises: [
         ...block.exercises,
-        { id: crypto.randomUUID(), exercise_name: "", sets: "", reps: "", charge_rpe: "", recovery: "" },
+        { id: crypto.randomUUID(), exercise_name: "", sets: "", reps: "", charge_rpe: "", tempo: "", recovery: "" },
       ],
     });
   }
@@ -59,13 +60,14 @@ export default function BlockEditor({
 
       {block.exercises.length > 0 && (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[640px]">
+          <table className="w-full text-sm min-w-[760px]">
             <thead>
               <tr className="text-left text-xs text-gray-400">
                 <th className="font-medium pb-1 pr-2">Exercice</th>
                 <th className="font-medium pb-1 pr-2 w-16">Séries</th>
                 <th className="font-medium pb-1 pr-2 w-16">Reps</th>
                 <th className="font-medium pb-1 pr-2 w-32">Charge / RPE</th>
+                <th className="font-medium pb-1 pr-2 w-24">Tempo</th>
                 <th className="font-medium pb-1 pr-2 w-28">Récup</th>
                 <th className="w-8" />
               </tr>
@@ -100,6 +102,14 @@ export default function BlockEditor({
                       value={ex.charge_rpe}
                       onChange={(e) => updateExercise(ex.id, { charge_rpe: e.target.value })}
                       placeholder="80% 1RM, RPE 8..."
+                      className="w-full rounded-lg border border-gray-300 px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-toec-green"
+                    />
+                  </td>
+                  <td className="pr-2 pb-2">
+                    <input
+                      value={ex.tempo}
+                      onChange={(e) => updateExercise(ex.id, { tempo: e.target.value })}
+                      placeholder="3-1-1-0"
                       className="w-full rounded-lg border border-gray-300 px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-toec-green"
                     />
                   </td>

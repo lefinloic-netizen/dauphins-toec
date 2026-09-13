@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { SessionWithGroup } from "../../types/views";
+import SessionContentModal from "./SessionContentModal";
 
 const slotLabels: Record<string, string> = {
   matin: "Matin",
@@ -15,6 +17,7 @@ export default function DayView({
   onDelete: (id: string) => void;
 }) {
   const navigate = useNavigate();
+  const [viewingSession, setViewingSession] = useState<SessionWithGroup | null>(null);
   const sorted = [...sessions].sort((a, b) => (a.time_slot ?? "").localeCompare(b.time_slot ?? ""));
 
   if (sorted.length === 0) {
@@ -29,7 +32,10 @@ export default function DayView({
     <div className="flex flex-col gap-3">
       {sorted.map((s) => (
         <div key={s.id} className="bg-white rounded-2xl shadow-sm p-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
+          <button
+            onClick={() => setViewingSession(s)}
+            className="flex items-center gap-3 min-w-0 text-left hover:opacity-80"
+          >
             <span
               className="w-2.5 h-2.5 rounded-full shrink-0"
               style={{ backgroundColor: s.group?.color ?? "#9ca3af" }}
@@ -41,7 +47,7 @@ export default function DayView({
                 {s.duration_minutes ? ` · ${s.duration_minutes} min` : ""}
               </div>
             </div>
-          </div>
+          </button>
           <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={() => navigate("/creer-seance", { state: { editSessionId: s.id } })}
@@ -66,6 +72,14 @@ export default function DayView({
           </div>
         </div>
       ))}
+
+      {viewingSession && (
+        <SessionContentModal
+          sessionId={viewingSession.id}
+          sessionName={viewingSession.name}
+          onClose={() => setViewingSession(null)}
+        />
+      )}
     </div>
   );
 }

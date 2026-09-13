@@ -100,6 +100,7 @@ export type SessionExercise = {
   sets: string | null;
   reps: string | null;
   charge_rpe: string | null;
+  tempo: string | null;
   recovery: string | null;
   order_index: number;
 };

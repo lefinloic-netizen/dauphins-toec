@@ -35,6 +35,7 @@ interface SessionExerciseView {
   sets: string | null;
   reps: string | null;
   charge_rpe: string | null;
+  tempo: string | null;
   recovery: string | null;
 }
 
@@ -177,7 +178,7 @@ export default function AthleteHome() {
     for (const b of blocksData ?? []) {
       const { data: exData } = await supabase
         .from("session_exercises")
-        .select("id, exercise_name, exercise_id, sets, reps, charge_rpe, recovery")
+        .select("id, exercise_name, exercise_id, sets, reps, charge_rpe, tempo, recovery")
         .eq("block_id", b.id)
         .order("order_index");
       blocks.push({ id: b.id, title: b.title, exercises: (exData as SessionExerciseView[]) ?? [] });
@@ -358,6 +359,7 @@ export default function AthleteHome() {
                                       ex.sets && `${ex.sets} séries`,
                                       ex.reps && `${ex.reps} reps`,
                                       ex.charge_rpe,
+                                      ex.tempo && `tempo ${ex.tempo}`,
                                       ex.recovery && `récup ${ex.recovery}`,
                                     ]
                                       .filter(Boolean)

@@ -1,6 +1,7 @@
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import { addDays, startOfWeek, toISODate, WEEKDAY_LABELS } from "../../lib/dates";
 import type { SessionWithGroup } from "../../types/views";
+import SessionContentModal from "./SessionContentModal";
 
 const slots: { key: string; label: string }[] = [
   { key: "matin", label: "Matin" },
@@ -11,6 +12,7 @@ const slots: { key: string; label: string }[] = [
 export default function WeekView({ refDate, sessions }: { refDate: Date; sessions: SessionWithGroup[] }) {
   const start = startOfWeek(refDate);
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  const [viewingSession, setViewingSession] = useState<SessionWithGroup | null>(null);
 
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-x-auto">
@@ -34,14 +36,15 @@ export default function WeekView({ refDate, sessions }: { refDate: Date; session
               return (
                 <div key={`${slot.key}-${i}`} className="p-1.5 border-t border-l border-gray-100 min-h-[64px]">
                   {daySessions.map((s) => (
-                    <div
+                    <button
                       key={s.id}
-                      className="text-white text-xs rounded-md px-2 py-1 mb-1 truncate"
+                      onClick={() => setViewingSession(s)}
+                      className="block w-full text-left text-white text-xs rounded-md px-2 py-1 mb-1 truncate hover:opacity-80"
                       style={{ backgroundColor: s.group?.color ?? "#9ca3af" }}
                       title={s.name}
                     >
                       {s.name}
-                    </div>
+                    </button>
                   ))}
                 </div>
               );
@@ -49,6 +52,14 @@ export default function WeekView({ refDate, sessions }: { refDate: Date; session
           </Fragment>
         ))}
       </div>
+
+      {viewingSession && (
+        <SessionContentModal
+          sessionId={viewingSession.id}
+          sessionName={viewingSession.name}
+          onClose={() => setViewingSession(null)}
+        />
+      )}
     </div>
   );
 }

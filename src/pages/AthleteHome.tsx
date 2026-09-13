@@ -44,6 +44,17 @@ interface SessionBlockView {
   exercises: SessionExerciseView[];
 }
 
+interface MyLoggedExercise {
+  name: string;
+  unit: ReturnType<typeof unitForCategory>;
+  sets: { value_kg: number; reps: number | null }[];
+}
+
+interface MySessionLog {
+  comment: string | null;
+  exercises: Record<string, MyLoggedExercise>;
+}
+
 export default function AthleteHome() {
   const { profile } = useAuth();
   const athleteId = profile!.id;
@@ -59,6 +70,7 @@ export default function AthleteHome() {
   const [addPerfOpen, setAddPerfOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [detailsCache, setDetailsCache] = useState<Record<string, SessionBlockView[]>>({});
+  const [myLogCache, setMyLogCache] = useState<Record<string, MySessionLog | null>>({});
   const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null);
   const [loggingSession, setLoggingSession] = useState<UpcomingSession | null>(null);
 
@@ -107,6 +119,45 @@ export default function AthleteHome() {
     }
   }
 
+  async function loadMyLog(sessionId: string) {
+    const { data: noteData } = await supabase
+      .from("session_athlete_notes")
+      .select("comment")
+      .eq("session_id", sessionId)
+      .eq("athlete_id", athleteId)
+      .maybeSingle();
+
+    const { data: perfsData } = await supabase
+      .from("performances")
+      .select("exercise_id, value_kg, reps, set_number, exercise:exercises(name, category)")
+      .eq("session_id", sessionId)
+      .eq("athlete_id", athleteId)
+      .order("set_number");
+
+    const perfs =
+      (perfsData as unknown as {
+        exercise_id: string;
+        value_kg: number;
+        reps: number | null;
+        exercise: { name: string; category: Exercise["category"] };
+      }[]) ?? [];
+
+    if (!noteData && perfs.length === 0) {
+      setMyLogCache((c) => ({ ...c, [sessionId]: null }));
+      return;
+    }
+
+    const exercisesLog: Record<string, MyLoggedExercise> = {};
+    for (const p of perfs) {
+      if (!exercisesLog[p.exercise_id]) {
+        exercisesLog[p.exercise_id] = { name: p.exercise?.name ?? "Exercice", unit: unitForCategory(p.exercise?.category ?? "musculation"), sets: [] };
+      }
+      exercisesLog[p.exercise_id].sets.push({ value_kg: p.value_kg, reps: p.reps });
+    }
+
+    setMyLogCache((c) => ({ ...c, [sessionId]: { comment: noteData?.comment ?? null, exercises: exercisesLog } }));
+  }
+
   async function toggleExpand(sessionId: string) {
     if (expandedId === sessionId) {
       setExpandedId(null);
@@ -133,6 +184,7 @@ export default function AthleteHome() {
     }
 
     setDetailsCache((c) => ({ ...c, [sessionId]: blocks }));
+    await loadMyLog(sessionId);
     setLoadingDetailId(null);
   }
 
@@ -322,11 +374,34 @@ export default function AthleteHome() {
                         <p className="text-sm text-gray-400">Aucun détail renseigné pour cette séance.</p>
                       )}
 
+                      {myLogCache[s.id] && (
+                        <div className="bg-toec-green-light rounded-lg p-3">
+                          <div className="text-xs font-semibold text-toec-green-dark mb-2 uppercase tracking-wide">
+                            Ce que j'ai fait
+                          </div>
+                          {Object.entries(myLogCache[s.id]!.exercises).map(([exId, ex]) => (
+                            <div key={exId} className="text-sm text-toec-green-dark mb-1">
+                              <span className="font-medium">{ex.name}</span> :{" "}
+                              {ex.sets.map((set, i) => (
+                                <span key={i}>
+                                  {i > 0 && ", "}
+                                  {formatValue(set.value_kg, ex.unit)}
+                                  {set.reps ? `×${set.reps}` : ""}
+                                </span>
+                              ))}
+                            </div>
+                          ))}
+                          {myLogCache[s.id]!.comment && (
+                            <p className="text-sm text-toec-green-dark italic mt-1">« {myLogCache[s.id]!.comment} »</p>
+                          )}
+                        </div>
+                      )}
+
                       <button
                         onClick={() => setLoggingSession(s)}
                         className="self-start text-sm bg-toec-green hover:bg-toec-green-dark text-white rounded-lg px-3 py-1.5 font-medium"
                       >
-                        Enregistrer mes perfs de cette séance
+                        {myLogCache[s.id] ? "Modifier mes perfs de cette séance" : "Enregistrer mes perfs de cette séance"}
                       </button>
                     </div>
                   )}
@@ -358,8 +433,10 @@ export default function AthleteHome() {
           blocks={detailsCache[loggingSession.id] ?? []}
           onClose={() => setLoggingSession(null)}
           onSaved={() => {
+            const sessionId = loggingSession.id;
             setLoggingSession(null);
             loadAll();
+            loadMyLog(sessionId);
             if (selectedExerciseId) {
               supabase
                 .from("performances")

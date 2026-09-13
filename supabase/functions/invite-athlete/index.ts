@@ -1,9 +1,9 @@
 // Edge Function: invite-athlete
-// Appelée par le coach depuis le Dashboard pour créer le compte d'un(e) athlète.
-// Utilise la service role key (jamais exposée au frontend) pour créer l'utilisateur
-// auth avec un mot de passe défini par le coach (aucun email envoyé — évite la limite
-// d'envoi d'emails du plan gratuit Supabase, utile pour créer beaucoup de comptes d'un coup),
-// et créer ses lignes profiles + athletes.
+// Appelée par un coach depuis le Dashboard pour créer un compte athlète OU un autre
+// compte coach (selon `role`). Utilise la service role key (jamais exposée au frontend)
+// pour créer l'utilisateur auth avec un mot de passe défini par l'appelant (aucun email
+// envoyé — évite la limite d'envoi d'emails du plan gratuit Supabase), et créer sa ligne
+// profiles (+ athletes si c'est un compte athlète).
 //
 // Si une étape échoue après la création du compte auth, celui-ci est supprimé
 // (rollback) pour que l'email ne reste pas "coincé" comme déjà utilisé.
@@ -20,6 +20,7 @@ interface InviteAthletePayload {
   password: string;
   first_name: string;
   last_name: string;
+  role?: "athlete" | "coach";
   sex?: "M" | "F";
   birth_date?: string;
   category?: string;
@@ -97,6 +98,7 @@ Deno.serve(async (req) => {
     }
 
     const newUserId = created.user.id;
+    const role = payload.role === "coach" ? "coach" : "athlete";
 
     async function fail(message: string) {
       // Rollback : on ne laisse jamais un compte auth orphelin sans fiche associée.
@@ -109,7 +111,7 @@ Deno.serve(async (req) => {
 
     const { error: profileError } = await admin.from("profiles").insert({
       id: newUserId,
-      role: "athlete",
+      role,
       first_name: payload.first_name,
       last_name: payload.last_name,
       email: payload.email,
@@ -117,19 +119,21 @@ Deno.serve(async (req) => {
 
     if (profileError) return await fail(profileError.message);
 
-    const { error: athleteError } = await admin.from("athletes").insert({
-      id: newUserId,
-      sex: payload.sex,
-      birth_date: payload.birth_date,
-      category: payload.category,
-    });
+    if (role === "athlete") {
+      const { error: athleteError } = await admin.from("athletes").insert({
+        id: newUserId,
+        sex: payload.sex,
+        birth_date: payload.birth_date,
+        category: payload.category,
+      });
 
-    if (athleteError) return await fail(athleteError.message);
+      if (athleteError) return await fail(athleteError.message);
 
-    if (payload.group_ids?.length) {
-      const rows = payload.group_ids.map((group_id) => ({ athlete_id: newUserId, group_id }));
-      const { error: groupsError } = await admin.from("athlete_groups").insert(rows);
-      if (groupsError) return await fail(groupsError.message);
+      if (payload.group_ids?.length) {
+        const rows = payload.group_ids.map((group_id) => ({ athlete_id: newUserId, group_id }));
+        const { error: groupsError } = await admin.from("athlete_groups").insert(rows);
+        if (groupsError) return await fail(groupsError.message);
+      }
     }
 
     return new Response(JSON.stringify({ id: newUserId }), {

@@ -4,12 +4,14 @@ import { calcAge } from "../lib/age";
 import type { AthleteWithProfile } from "../types/views";
 import AthleteFiche from "../components/dashboard/AthleteFiche";
 import InviteAthleteModal from "../components/dashboard/InviteAthleteModal";
+import AddCoachModal from "../components/dashboard/AddCoachModal";
 
 export default function Dashboard() {
   const [athletes, setAthletes] = useState<AthleteWithProfile[]>([]);
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [addCoachOpen, setAddCoachOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   async function loadAthletes() {
@@ -57,6 +59,9 @@ export default function Dashboard() {
           className="w-full text-sm bg-toec-green hover:bg-toec-green-dark text-white rounded-lg py-2 font-medium"
         >
           + Ajouter un(e) athlète
+        </button>
+        <button onClick={() => setAddCoachOpen(true)} className="text-xs text-gray-400 hover:text-toec-green-dark self-center">
+          + Ajouter un coach
         </button>
 
         <div className="flex flex-col gap-1 max-h-[65vh] overflow-y-auto">
@@ -115,6 +120,10 @@ export default function Dashboard() {
             loadAthletes();
           }}
         />
+      )}
+
+      {addCoachOpen && (
+        <AddCoachModal onClose={() => setAddCoachOpen(false)} onCreated={() => setAddCoachOpen(false)} />
       )}
     </div>
   );

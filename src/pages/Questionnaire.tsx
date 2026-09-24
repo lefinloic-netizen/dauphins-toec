@@ -1,10 +1,22 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
+import { readLocalStorage, writeLocalStorage, clearLocalStorage } from "../lib/draftStorage";
 import { TextInput, TextAreaInput, ScaleInput } from "../components/questionnaire/Fields";
 
 type Section = Record<string, string>;
 type TagType = "fort" | "faible" | "a_travailler";
+
+interface Draft {
+  general: Section;
+  sport: Section;
+  medical: Section;
+  fortsMuscu: string;
+  fortsEau: string;
+  faibles: string;
+  aAmeliorer: string;
+  otherRemarks: string;
+}
 
 function parseList(text: string): string[] {
   return text
@@ -28,20 +40,25 @@ function deriveAutoTags(medical: Section): { type: TagType; label: string }[] {
 export default function Questionnaire() {
   const { profile } = useAuth();
   const athleteId = profile!.id;
+  const draftKey = `toec:questionnaire-draft:${athleteId}`;
 
-  const [general, setGeneral] = useState<Section>({});
-  const [sport, setSport] = useState<Section>({});
-  const [medical, setMedical] = useState<Section>({});
+  const [general, setGeneral] = useState<Section>(() => readLocalStorage<Draft>(draftKey)?.general ?? {});
+  const [sport, setSport] = useState<Section>(() => readLocalStorage<Draft>(draftKey)?.sport ?? {});
+  const [medical, setMedical] = useState<Section>(() => readLocalStorage<Draft>(draftKey)?.medical ?? {});
 
-  const [fortsMuscu, setFortsMuscu] = useState("");
-  const [fortsEau, setFortsEau] = useState("");
-  const [faibles, setFaibles] = useState("");
-  const [aAmeliorer, setAAmeliorer] = useState("");
+  const [fortsMuscu, setFortsMuscu] = useState(() => readLocalStorage<Draft>(draftKey)?.fortsMuscu ?? "");
+  const [fortsEau, setFortsEau] = useState(() => readLocalStorage<Draft>(draftKey)?.fortsEau ?? "");
+  const [faibles, setFaibles] = useState(() => readLocalStorage<Draft>(draftKey)?.faibles ?? "");
+  const [aAmeliorer, setAAmeliorer] = useState(() => readLocalStorage<Draft>(draftKey)?.aAmeliorer ?? "");
 
-  const [otherRemarks, setOtherRemarks] = useState("");
+  const [otherRemarks, setOtherRemarks] = useState(() => readLocalStorage<Draft>(draftKey)?.otherRemarks ?? "");
 
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    writeLocalStorage<Draft>(draftKey, { general, sport, medical, fortsMuscu, fortsEau, faibles, aAmeliorer, otherRemarks });
+  }, [general, sport, medical, fortsMuscu, fortsEau, faibles, aAmeliorer, otherRemarks]);
 
   function set(setter: (fn: (s: Section) => Section) => void, key: string, value: string) {
     setter((s) => ({ ...s, [key]: value }));
@@ -80,6 +97,7 @@ export default function Questionnaire() {
     }
 
     setSaving(false);
+    clearLocalStorage(draftKey);
     setDone(true);
   }
 

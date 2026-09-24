@@ -29,6 +29,16 @@ export default function AthleteLayout() {
         >
           Questionnaire
         </NavLink>
+        <NavLink
+          to="/protocole"
+          className={({ isActive }) =>
+            `px-3 py-3 text-sm font-medium border-b-2 transition-colors ${
+              isActive ? "border-toec-green text-toec-green-dark" : "border-transparent text-gray-500"
+            }`
+          }
+        >
+          Protocole
+        </NavLink>
       </nav>
       <main className="flex-1 p-4 max-w-lg mx-auto w-full">
         <Outlet />

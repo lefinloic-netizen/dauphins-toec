@@ -13,6 +13,7 @@ import Bibliotheque from "./pages/Bibliotheque";
 import Groupes from "./pages/Groupes";
 import AthleteHome from "./pages/AthleteHome";
 import Questionnaire from "./pages/Questionnaire";
+import Protocole from "./pages/Protocole";
 
 function AppRoutes() {
   const { needsPasswordSetup } = useAuth();
@@ -49,6 +50,7 @@ function AppRoutes() {
       >
         <Route path="/mon-espace" element={<AthleteHome />} />
         <Route path="/questionnaire" element={<Questionnaire />} />
+        <Route path="/protocole" element={<Protocole />} />
       </Route>
 
       <Route path="/" element={<Navigate to="/login" replace />} />

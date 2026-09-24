@@ -7,6 +7,7 @@ import type { Exercise } from "../../types/database";
 import PerfChart from "./PerfChart";
 import AddPerfModal from "./AddPerfModal";
 import QuestionnaireViewer from "./QuestionnaireViewer";
+import ProtocolModal from "./ProtocolModal";
 
 const tagStyles: Record<string, string> = {
   fort: "bg-green-100 text-green-800",
@@ -41,6 +42,7 @@ export default function AthleteFiche({
   const [addPerfOpen, setAddPerfOpen] = useState(false);
   const [newTagLabel, setNewTagLabel] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [protocolOpen, setProtocolOpen] = useState(false);
 
   useEffect(() => {
     setBirthDate(athlete.birth_date ?? "");
@@ -172,13 +174,21 @@ export default function AthleteFiche({
             </div>
           </div>
         </div>
-        <button
-          onClick={deleteAthlete}
-          disabled={deleting}
-          className="text-xs text-red-500 hover:text-red-700 shrink-0 disabled:opacity-60"
-        >
-          {deleting ? "Suppression..." : "Supprimer cet athlète"}
-        </button>
+        <div className="flex items-center gap-3 shrink-0">
+          <button
+            onClick={() => setProtocolOpen(true)}
+            className="text-sm bg-toec-green hover:bg-toec-green-dark text-white rounded-lg px-3 py-1.5 font-medium"
+          >
+            Protocole individuel
+          </button>
+          <button
+            onClick={deleteAthlete}
+            disabled={deleting}
+            className="text-xs text-red-500 hover:text-red-700 disabled:opacity-60"
+          >
+            {deleting ? "Suppression..." : "Supprimer cet athlète"}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
@@ -331,6 +341,14 @@ export default function AthleteFiche({
             loadRecords();
             if (selectedExerciseId) loadPerformances(selectedExerciseId);
           }}
+        />
+      )}
+
+      {protocolOpen && (
+        <ProtocolModal
+          athleteId={athlete.id}
+          athleteName={`${athlete.profile.first_name} ${athlete.profile.last_name}`}
+          onClose={() => setProtocolOpen(false)}
         />
       )}
     </div>

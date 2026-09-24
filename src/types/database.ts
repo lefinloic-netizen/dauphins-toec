@@ -122,6 +122,28 @@ export type SessionAthleteNote = {
   updated_at: string;
 };
 
+export type AthleteProtocol = {
+  id: string;
+  athlete_id: string;
+  zones_notes: string | null;
+  athlete_comment: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ProtocolExercise = {
+  id: string;
+  protocol_id: string;
+  exercise_name: string;
+  zone: string | null;
+  sets: string | null;
+  reps: string | null;
+  charge: string | null;
+  recovery: string | null;
+  observations: string | null;
+  order_index: number;
+};
+
 export type QuestionnaireResponses = {
   id: string;
   athlete_id: string;
@@ -161,6 +183,8 @@ export type Database = {
       next_competition: TableDef<NextCompetition>;
       questionnaire_responses: TableDef<QuestionnaireResponses>;
       session_athlete_notes: TableDef<SessionAthleteNote>;
+      athlete_protocols: TableDef<AthleteProtocol>;
+      protocol_exercises: TableDef<ProtocolExercise>;
     };
     Views: {
       athlete_records: {

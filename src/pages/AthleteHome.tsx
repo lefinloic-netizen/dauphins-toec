@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import { calcAge } from "../lib/age";
@@ -207,20 +208,46 @@ export default function AthleteHome() {
   const selectedRecord = records.find((r) => r.exercise_id === selectedExerciseId);
   const selectedExercise = exercises.find((ex) => ex.id === selectedExerciseId);
   const selectedUnit = unitForCategory(selectedExercise?.category ?? "musculation");
+  const todayIso = toISODate(new Date());
+  const todaySession = upcoming.find((s) => s.date === todayIso);
 
   return (
     <div className="flex flex-col gap-4 pb-6">
-      <div className="bg-white rounded-2xl shadow-sm p-5">
-        <h1 className="text-lg font-semibold text-gray-900">
-          {profile!.first_name} {profile!.last_name}
-        </h1>
-        <div className="flex flex-wrap gap-1.5 mt-1.5 mb-3">
+      <div>
+        <h1 className="text-xl font-semibold text-gray-900">Bonjour {profile!.first_name} 👋</h1>
+        <div className="flex flex-wrap gap-1.5 mt-1.5">
           {groupBadges.map((g) => (
             <span key={g.id} className="text-xs font-medium text-white rounded-full px-2 py-0.5" style={{ backgroundColor: g.color }}>
               {g.name}
             </span>
           ))}
         </div>
+      </div>
+
+      <div className="bg-toec-green text-white rounded-2xl shadow-sm p-5">
+        <div className="text-xs font-medium uppercase tracking-wide opacity-80 mb-1">Aujourd'hui</div>
+        {todaySession ? (
+          <>
+            <div className="text-lg font-semibold">{todaySession.name}</div>
+            <div className="text-sm opacity-90">
+              {todaySession.group?.name ?? "Sans groupe"} · {slotLabels[todaySession.time_slot ?? "matin"]}
+              {todaySession.duration_minutes ? ` · ${todaySession.duration_minutes} min` : ""}
+            </div>
+          </>
+        ) : (
+          <p className="text-sm opacity-90">Pas de séance prévue aujourd'hui.</p>
+        )}
+      </div>
+
+      <Link
+        to="/protocole"
+        className="bg-white rounded-2xl shadow-sm p-4 flex items-center justify-between text-toec-green-dark font-medium hover:bg-toec-green-light transition-colors"
+      >
+        <span>📋 Mon protocole individuel</span>
+        <span>→</span>
+      </Link>
+
+      <div className="bg-white rounded-2xl shadow-sm p-5">
         <div className="grid grid-cols-3 gap-3 text-center">
           <div>
             <div className="text-xs text-gray-400">Âge</div>

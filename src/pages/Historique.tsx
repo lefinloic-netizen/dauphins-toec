@@ -25,6 +25,7 @@ interface AthleteLog {
   athleteId: string;
   name: string;
   comment: string | null;
+  rpe: number | null;
   exercises: Record<string, { reps: number | null; value_kg: number }[]>;
   exerciseNames: Record<string, string>;
 }
@@ -109,12 +110,16 @@ export default function Historique() {
 
     const { data: notesData } = await supabase
       .from("session_athlete_notes")
-      .select("athlete_id, comment, athlete:athletes(profile:profiles(first_name, last_name))")
+      .select("athlete_id, comment, rpe, athlete:athletes(profile:profiles(first_name, last_name))")
       .eq("session_id", sessionId);
 
     const notes =
-      (notesData as unknown as { athlete_id: string; comment: string | null; athlete: { profile: { first_name: string; last_name: string } } }[]) ??
-      [];
+      (notesData as unknown as {
+        athlete_id: string;
+        comment: string | null;
+        rpe: number | null;
+        athlete: { profile: { first_name: string; last_name: string } };
+      }[]) ?? [];
 
     const logsByAthlete: Record<string, AthleteLog> = {};
     for (const n of notes) {
@@ -122,6 +127,7 @@ export default function Historique() {
         athleteId: n.athlete_id,
         name: `${n.athlete.profile.first_name} ${n.athlete.profile.last_name}`,
         comment: n.comment,
+        rpe: n.rpe,
         exercises: {},
         exerciseNames: {},
       };
@@ -148,6 +154,7 @@ export default function Historique() {
           athleteId: p.athlete_id,
           name: "Athlète",
           comment: null,
+          rpe: null,
           exercises: {},
           exerciseNames: {},
         };
@@ -307,7 +314,14 @@ export default function Historique() {
                       <div className="flex flex-col gap-2">
                         {logs.map((log) => (
                           <div key={log.athleteId} className="bg-white border border-gray-200 rounded-lg p-3">
-                            <div className="text-sm font-medium text-gray-800 mb-1">{log.name}</div>
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <div className="text-sm font-medium text-gray-800">{log.name}</div>
+                              {log.rpe && (
+                                <span className="text-xs font-medium rounded-full px-2 py-0.5 bg-toec-green-light text-toec-green-dark shrink-0">
+                                  RPE {log.rpe}/10
+                                </span>
+                              )}
+                            </div>
                             {Object.keys(log.exercises).length > 0 && (
                               <div className="flex flex-col gap-1 mb-1.5">
                                 {Object.entries(log.exercises).map(([exerciseId, sets]) => (

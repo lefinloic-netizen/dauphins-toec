@@ -36,6 +36,7 @@ interface LoggableExercise {
 
 interface DraftShape {
   comment: string;
+  rpe: string;
   sets: Record<string, SetRow[]>;
 }
 
@@ -96,6 +97,7 @@ export default function LogSessionModal({
   const [loggable, setLoggable] = useState<LoggableExercise[]>([]);
   const [setsByExercise, setSetsByExercise] = useState<Record<string, SetRow[]>>({});
   const [comment, setComment] = useState("");
+  const [rpe, setRpe] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -108,7 +110,7 @@ export default function LogSessionModal({
 
       const { data: noteData } = await supabase
         .from("session_athlete_notes")
-        .select("comment")
+        .select("comment, rpe")
         .eq("session_id", sessionId)
         .eq("athlete_id", athleteId)
         .maybeSingle();
@@ -143,6 +145,7 @@ export default function LogSessionModal({
       // base — il prend le dessus s'il existe.
       const draft = readLocalStorage<DraftShape>(draftKey);
       setComment(draft?.comment ?? noteData?.comment ?? "");
+      setRpe(draft?.rpe ?? noteData?.rpe?.toString() ?? "");
       setSetsByExercise(draft ? { ...baseline, ...draft.sets } : baseline);
       setLoading(false);
     }
@@ -151,8 +154,8 @@ export default function LogSessionModal({
 
   useEffect(() => {
     if (loading) return;
-    writeLocalStorage(draftKey, { comment, sets: setsByExercise });
-  }, [comment, setsByExercise, loading]);
+    writeLocalStorage(draftKey, { comment, rpe, sets: setsByExercise });
+  }, [comment, rpe, setsByExercise, loading]);
 
   function updateSet(key: string, index: number, patch: Partial<SetRow>) {
     setSetsByExercise((prev) => ({
@@ -228,9 +231,10 @@ export default function LogSessionModal({
       }
     }
 
-    const { error: noteError } = await supabase
-      .from("session_athlete_notes")
-      .upsert({ session_id: sessionId, athlete_id: athleteId, comment: comment || null }, { onConflict: "session_id,athlete_id" });
+    const { error: noteError } = await supabase.from("session_athlete_notes").upsert(
+      { session_id: sessionId, athlete_id: athleteId, comment: comment || null, rpe: rpe ? Number(rpe) : null },
+      { onConflict: "session_id,athlete_id" },
+    );
 
     setSaving(false);
 
@@ -286,6 +290,24 @@ export default function LogSessionModal({
               </button>
             </div>
           ))}
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Difficulté ressentie (RPE){rpe && <span className="text-toec-green-dark"> — {rpe}/10</span>}
+          </label>
+          <input
+            type="range"
+            min={1}
+            max={10}
+            value={rpe || "5"}
+            onChange={(e) => setRpe(e.target.value)}
+            className="w-full accent-toec-green"
+          />
+          <div className="flex justify-between text-xs text-gray-400">
+            <span>1 — très facile</span>
+            <span>10 — extrême</span>
+          </div>
+        </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Commentaire sur la séance</label>

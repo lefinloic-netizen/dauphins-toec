@@ -118,8 +118,30 @@ export type SessionAthleteNote = {
   session_id: string;
   athlete_id: string;
   comment: string | null;
+  rpe: number | null;
   created_at: string;
   updated_at: string;
+};
+
+export type WeightLog = {
+  id: string;
+  athlete_id: string;
+  weight_kg: number;
+  date: string;
+  created_at: string;
+};
+
+export type ProtocolLibraryCategory = "echauffement" | "mobilite" | "renfo";
+
+export type ProtocolLibraryItem = {
+  id: string;
+  title: string;
+  category: ProtocolLibraryCategory;
+  zone: string | null;
+  description: string | null;
+  video_url: string | null;
+  order_index: number;
+  created_at: string;
 };
 
 export type AthleteProtocol = {
@@ -185,6 +207,8 @@ export type Database = {
       session_athlete_notes: TableDef<SessionAthleteNote>;
       athlete_protocols: TableDef<AthleteProtocol>;
       protocol_exercises: TableDef<ProtocolExercise>;
+      weight_logs: TableDef<WeightLog>;
+      protocol_library: TableDef<ProtocolLibraryItem>;
     };
     Views: {
       athlete_records: {

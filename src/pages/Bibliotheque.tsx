@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import type { Exercise, ExerciseCategory } from "../types/database";
 import Modal from "../components/Modal";
+import ProtocolLibrarySection from "../components/bibliotheque/ProtocolLibrarySection";
 
 const categoryLabels: Record<ExerciseCategory, string> = {
   musculation: "Musculation",
@@ -24,6 +25,7 @@ const categoryClasses: Record<ExerciseCategory, string> = {
 };
 
 export default function Bibliotheque() {
+  const [view, setView] = useState<"exercises" | "protocols">("exercises");
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<ExerciseCategory | "all">("all");
@@ -85,6 +87,29 @@ export default function Bibliotheque() {
 
   return (
     <div>
+      <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 mb-4 w-fit">
+        <button
+          onClick={() => setView("exercises")}
+          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            view === "exercises" ? "bg-toec-green text-white" : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          Exercices
+        </button>
+        <button
+          onClick={() => setView("protocols")}
+          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            view === "protocols" ? "bg-toec-green text-white" : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          Protocoles
+        </button>
+      </div>
+
+      {view === "protocols" ? (
+        <ProtocolLibrarySection />
+      ) : (
+        <>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h2 className="font-semibold text-gray-900 text-lg">Bibliothèque d'exercices</h2>
         <button
@@ -213,6 +238,8 @@ export default function Bibliotheque() {
             </button>
           </div>
         </Modal>
+      )}
+        </>
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { calcAge } from "../../lib/age";
+import { formatFRDate } from "../../lib/dates";
 import { formatValue, unitForCategory } from "../../lib/units";
 import type { AthleteWithProfile, AthleteTagRow, RecordRow, PerformancePoint } from "../../types/views";
 import type { Exercise } from "../../types/database";
@@ -43,6 +44,7 @@ export default function AthleteFiche({
   const [newTagLabel, setNewTagLabel] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [protocolOpen, setProtocolOpen] = useState(false);
+  const [latestSelfWeight, setLatestSelfWeight] = useState<{ weight_kg: number; date: string } | null>(null);
 
   useEffect(() => {
     setBirthDate(athlete.birth_date ?? "");
@@ -50,6 +52,7 @@ export default function AthleteFiche({
     setHeight(athlete.height_cm?.toString() ?? "");
     loadTags();
     loadRecords();
+    loadLatestSelfWeight();
   }, [athlete.id]);
 
   useEffect(() => {
@@ -66,6 +69,17 @@ export default function AthleteFiche({
       .select("id, athlete_id, type, label, source")
       .eq("athlete_id", athlete.id);
     setTags((data as AthleteTagRow[]) ?? []);
+  }
+
+  async function loadLatestSelfWeight() {
+    const { data } = await supabase
+      .from("weight_logs")
+      .select("weight_kg, date")
+      .eq("athlete_id", athlete.id)
+      .order("date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setLatestSelfWeight((data as { weight_kg: number; date: string } | null) ?? null);
   }
 
   async function loadRecords() {
@@ -214,6 +228,11 @@ export default function AthleteFiche({
             onBlur={() => saveMetric("weight_kg", weight)}
             className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-toec-green"
           />
+          {latestSelfWeight && (
+            <p className="text-[11px] text-gray-400 mt-1">
+              Dernier auto-déclaré : {latestSelfWeight.weight_kg} kg ({formatFRDate(latestSelfWeight.date)})
+            </p>
+          )}
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Taille (cm)</label>

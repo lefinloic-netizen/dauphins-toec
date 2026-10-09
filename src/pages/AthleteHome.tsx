@@ -3,13 +3,14 @@ import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import { calcAge } from "../lib/age";
-import { addDays, formatFRDate, toISODate } from "../lib/dates";
+import { addDays, toISODate } from "../lib/dates";
 import { formatValue, unitForCategory } from "../lib/units";
 import type { Athlete, Exercise } from "../types/database";
-import type { AthleteTagRow, RecordRow, PerformancePoint, SessionWithGroup } from "../types/views";
+import type { AthleteTagRow, RecordRow, PerformancePoint } from "../types/views";
 import PerfChart from "../components/dashboard/PerfChart";
 import AddPerfModal from "../components/dashboard/AddPerfModal";
-import LogSessionModal from "../components/athlete/LogSessionModal";
+import AthleteSessionList, { type SessionWithWarmup } from "../components/athlete/AthleteSessionList";
+import WeightTracker from "../components/athlete/WeightTracker";
 
 const tagStyles: Record<string, string> = {
   fort: "bg-green-100 text-green-800",
@@ -25,38 +26,6 @@ const tagTitles: Record<string, string> = {
 
 const slotLabels: Record<string, string> = { matin: "Matin", apres_midi: "Après-midi", soir: "Soir" };
 
-interface UpcomingSession extends SessionWithGroup {
-  warmup_text: string | null;
-}
-
-interface SessionExerciseView {
-  id: string;
-  exercise_name: string;
-  exercise_id: string | null;
-  sets: string | null;
-  reps: string | null;
-  charge_rpe: string | null;
-  tempo: string | null;
-  recovery: string | null;
-}
-
-interface SessionBlockView {
-  id: string;
-  title: string;
-  exercises: SessionExerciseView[];
-}
-
-interface MyLoggedExercise {
-  name: string;
-  unit: ReturnType<typeof unitForCategory>;
-  sets: { value_kg: number; reps: number | null }[];
-}
-
-interface MySessionLog {
-  comment: string | null;
-  exercises: Record<string, MyLoggedExercise>;
-}
-
 export default function AthleteHome() {
   const { profile } = useAuth();
   const athleteId = profile!.id;
@@ -68,13 +37,8 @@ export default function AthleteHome() {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [selectedExerciseId, setSelectedExerciseId] = useState("");
   const [perfPoints, setPerfPoints] = useState<PerformancePoint[]>([]);
-  const [upcoming, setUpcoming] = useState<UpcomingSession[]>([]);
+  const [upcoming, setUpcoming] = useState<SessionWithWarmup[]>([]);
   const [addPerfOpen, setAddPerfOpen] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [detailsCache, setDetailsCache] = useState<Record<string, SessionBlockView[]>>({});
-  const [myLogCache, setMyLogCache] = useState<Record<string, MySessionLog | null>>({});
-  const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null);
-  const [loggingSession, setLoggingSession] = useState<UpcomingSession | null>(null);
 
   async function loadAll() {
     const { data: athleteData } = await supabase.from("athletes").select("*").eq("id", athleteId).single();
@@ -117,77 +81,8 @@ export default function AthleteHome() {
         .gte("date", windowStart)
         .order("date", { ascending: false })
         .limit(15);
-      setUpcoming((sessionsData as unknown as UpcomingSession[]) ?? []);
+      setUpcoming((sessionsData as unknown as SessionWithWarmup[]) ?? []);
     }
-  }
-
-  async function loadMyLog(sessionId: string) {
-    const { data: noteData } = await supabase
-      .from("session_athlete_notes")
-      .select("comment")
-      .eq("session_id", sessionId)
-      .eq("athlete_id", athleteId)
-      .maybeSingle();
-
-    const { data: perfsData } = await supabase
-      .from("performances")
-      .select("exercise_id, value_kg, reps, set_number, exercise:exercises(name, category)")
-      .eq("session_id", sessionId)
-      .eq("athlete_id", athleteId)
-      .order("set_number");
-
-    const perfs =
-      (perfsData as unknown as {
-        exercise_id: string;
-        value_kg: number;
-        reps: number | null;
-        exercise: { name: string; category: Exercise["category"] };
-      }[]) ?? [];
-
-    if (!noteData && perfs.length === 0) {
-      setMyLogCache((c) => ({ ...c, [sessionId]: null }));
-      return;
-    }
-
-    const exercisesLog: Record<string, MyLoggedExercise> = {};
-    for (const p of perfs) {
-      if (!exercisesLog[p.exercise_id]) {
-        exercisesLog[p.exercise_id] = { name: p.exercise?.name ?? "Exercice", unit: unitForCategory(p.exercise?.category ?? "musculation"), sets: [] };
-      }
-      exercisesLog[p.exercise_id].sets.push({ value_kg: p.value_kg, reps: p.reps });
-    }
-
-    setMyLogCache((c) => ({ ...c, [sessionId]: { comment: noteData?.comment ?? null, exercises: exercisesLog } }));
-  }
-
-  async function toggleExpand(sessionId: string) {
-    if (expandedId === sessionId) {
-      setExpandedId(null);
-      return;
-    }
-    setExpandedId(sessionId);
-    if (detailsCache[sessionId]) return;
-
-    setLoadingDetailId(sessionId);
-    const { data: blocksData } = await supabase
-      .from("session_blocks")
-      .select("id, title")
-      .eq("session_id", sessionId)
-      .order("order_index");
-
-    const blocks: SessionBlockView[] = [];
-    for (const b of blocksData ?? []) {
-      const { data: exData } = await supabase
-        .from("session_exercises")
-        .select("id, exercise_name, exercise_id, sets, reps, charge_rpe, tempo, recovery")
-        .eq("block_id", b.id)
-        .order("order_index");
-      blocks.push({ id: b.id, title: b.title, exercises: (exData as SessionExerciseView[]) ?? [] });
-    }
-
-    setDetailsCache((c) => ({ ...c, [sessionId]: blocks }));
-    await loadMyLog(sessionId);
-    setLoadingDetailId(null);
   }
 
   useEffect(() => {
@@ -239,13 +134,22 @@ export default function AthleteHome() {
         )}
       </div>
 
-      <Link
-        to="/protocole"
-        className="bg-white rounded-2xl shadow-sm p-4 flex items-center justify-between text-toec-green-dark font-medium hover:bg-toec-green-light transition-colors"
-      >
-        <span>📋 Mon protocole individuel</span>
-        <span>→</span>
-      </Link>
+      <div className="grid grid-cols-2 gap-3">
+        <Link
+          to="/protocole"
+          className="bg-white rounded-2xl shadow-sm p-4 flex flex-col items-center justify-center text-center text-toec-green-dark font-medium hover:bg-toec-green-light transition-colors"
+        >
+          <span>📋</span>
+          <span className="text-sm">Mon protocole</span>
+        </Link>
+        <Link
+          to="/protocoles"
+          className="bg-white rounded-2xl shadow-sm p-4 flex flex-col items-center justify-center text-center text-toec-green-dark font-medium hover:bg-toec-green-light transition-colors"
+        >
+          <span>🎥</span>
+          <span className="text-sm">Échauffements & renfo</span>
+        </Link>
+      </div>
 
       <div className="bg-white rounded-2xl shadow-sm p-5">
         <div className="grid grid-cols-3 gap-3 text-center">
@@ -263,6 +167,8 @@ export default function AthleteHome() {
           </div>
         </div>
       </div>
+
+      <WeightTracker athleteId={athleteId} />
 
       <div className="bg-white rounded-2xl shadow-sm p-5">
         <h2 className="text-sm font-semibold text-gray-700 mb-2">Records</h2>
@@ -338,107 +244,14 @@ export default function AthleteHome() {
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm p-5">
-        <h2 className="text-sm font-semibold text-gray-700 mb-2">Mes séances</h2>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-semibold text-gray-700">Mes séances récentes</h2>
+          <Link to="/mon-historique" className="text-sm text-toec-green-dark hover:underline">
+            Tout l'historique →
+          </Link>
+        </div>
         <p className="text-xs text-gray-400 -mt-1 mb-2">Les 7 derniers jours et les séances à venir.</p>
-        {upcoming.length === 0 ? (
-          <p className="text-sm text-gray-400">Aucune séance sur cette période.</p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {upcoming.map((s) => {
-              const isOpen = expandedId === s.id;
-              const blocks = detailsCache[s.id];
-              return (
-                <div key={s.id} className="border-l-4 rounded-lg bg-gray-50 overflow-hidden" style={{ borderColor: s.group?.color ?? "#9ca3af" }}>
-                  <button onClick={() => toggleExpand(s.id)} className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left">
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-gray-800 truncate">{s.name}</div>
-                      <div className="text-xs text-gray-400">
-                        {s.date && formatFRDate(s.date)} · {slotLabels[s.time_slot ?? "matin"]}
-                        {s.duration_minutes ? ` · ${s.duration_minutes} min` : ""}
-                      </div>
-                    </div>
-                    <span className="text-gray-400 text-xs shrink-0">{isOpen ? "▲" : "▼"}</span>
-                  </button>
-
-                  {isOpen && (
-                    <div className="px-3 pb-3 flex flex-col gap-3">
-                      {loadingDetailId === s.id && <p className="text-xs text-gray-400">Chargement...</p>}
-
-                      {s.warmup_text && (
-                        <div className="bg-white rounded-lg p-3">
-                          <div className="text-xs font-semibold text-gray-500 mb-1">Échauffement</div>
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap">{s.warmup_text}</p>
-                        </div>
-                      )}
-
-                      {blocks?.map((block) => (
-                        <div key={block.id} className="bg-white rounded-lg p-3">
-                          <div className="text-xs font-semibold text-gray-500 mb-2">{block.title}</div>
-                          {block.exercises.length === 0 ? (
-                            <p className="text-sm text-gray-400">—</p>
-                          ) : (
-                            <div className="flex flex-col gap-2">
-                              {block.exercises.map((ex) => (
-                                <div key={ex.id} className="text-sm text-gray-700">
-                                  <div className="font-medium">{ex.exercise_name}</div>
-                                  <div className="text-xs text-gray-400">
-                                    {[
-                                      ex.sets && `${ex.sets} séries`,
-                                      ex.reps && `${ex.reps} reps`,
-                                      ex.charge_rpe,
-                                      ex.tempo && `tempo ${ex.tempo}`,
-                                      ex.recovery && `récup ${ex.recovery}`,
-                                    ]
-                                      .filter(Boolean)
-                                      .join(" · ")}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-
-                      {blocks && blocks.length === 0 && !s.warmup_text && (
-                        <p className="text-sm text-gray-400">Aucun détail renseigné pour cette séance.</p>
-                      )}
-
-                      {myLogCache[s.id] && (
-                        <div className="bg-toec-green-light rounded-lg p-3">
-                          <div className="text-xs font-semibold text-toec-green-dark mb-2 uppercase tracking-wide">
-                            Ce que j'ai fait
-                          </div>
-                          {Object.entries(myLogCache[s.id]!.exercises).map(([exId, ex]) => (
-                            <div key={exId} className="text-sm text-toec-green-dark mb-1">
-                              <span className="font-medium">{ex.name}</span> :{" "}
-                              {ex.sets.map((set, i) => (
-                                <span key={i}>
-                                  {i > 0 && ", "}
-                                  {formatValue(set.value_kg, ex.unit)}
-                                  {set.reps ? `×${set.reps}` : ""}
-                                </span>
-                              ))}
-                            </div>
-                          ))}
-                          {myLogCache[s.id]!.comment && (
-                            <p className="text-sm text-toec-green-dark italic mt-1">« {myLogCache[s.id]!.comment} »</p>
-                          )}
-                        </div>
-                      )}
-
-                      <button
-                        onClick={() => setLoggingSession(s)}
-                        className="self-start text-sm bg-toec-green hover:bg-toec-green-dark text-white rounded-lg px-3 py-1.5 font-medium"
-                      >
-                        {myLogCache[s.id] ? "Modifier mes perfs de cette séance" : "Enregistrer mes perfs de cette séance"}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
+        <AthleteSessionList athleteId={athleteId} sessions={upcoming} onLogged={loadAll} />
       </div>
 
       {addPerfOpen && exercises.length > 0 && (
@@ -449,31 +262,6 @@ export default function AthleteHome() {
           onSaved={() => {
             setAddPerfOpen(false);
             loadAll();
-          }}
-        />
-      )}
-
-      {loggingSession && (
-        <LogSessionModal
-          athleteId={athleteId}
-          sessionId={loggingSession.id}
-          sessionDate={loggingSession.date}
-          sessionName={loggingSession.name}
-          blocks={detailsCache[loggingSession.id] ?? []}
-          onClose={() => setLoggingSession(null)}
-          onSaved={() => {
-            const sessionId = loggingSession.id;
-            setLoggingSession(null);
-            loadAll();
-            loadMyLog(sessionId);
-            if (selectedExerciseId) {
-              supabase
-                .from("performances")
-                .select("id, value_kg, date")
-                .eq("athlete_id", athleteId)
-                .eq("exercise_id", selectedExerciseId)
-                .then(({ data }) => setPerfPoints((data as PerformancePoint[]) ?? []));
-            }
           }}
         />
       )}
